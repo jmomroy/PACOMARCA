@@ -1,5 +1,5 @@
 import streamlit as st
-import ee  # NOTA: Se instala como 'earthengine-api', pero se importa como 'ee'
+import ee
 import geemap.foliumap as geemap
 import pandas as pd
 import numpy as np
@@ -7,7 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 from datetime import datetime, timedelta
-from sklearn.linear_model import LinearRegression # NOTA: Se instala como 'scikit-learn'
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 
 # ==========================================
