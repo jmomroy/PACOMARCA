@@ -7,10 +7,58 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-# 1. CONFIGURACIÓN (Debe ser la primera línea)
+# 1. CONFIGURACIÓN DE PÁGINA
 st.set_page_config(page_title="Pacomarca Scientific", layout="wide", page_icon="🧬")
 
-# 2. AUTENTICACIÓN SEGURA (Lectura del Token)
+# 2. CSS "NUCLEAR" (FORZADO DE MODO CLARO ABSOLUTO)
+st.markdown("""
+<style>
+    /* Forzar variables de color globales */
+    :root {
+        --primary-color: #2563EB;
+        --background-color: #FFFFFF;
+        --secondary-background-color: #F8FAFC;
+        --text-color: #000000;
+        --font: "sans-serif";
+    }
+    
+    /* Fondo general y Texto */
+    .stApp {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+    }
+    
+    /* Sidebar Blanco */
+    section[data-testid="stSidebar"] {
+        background-color: #F1F5F9 !important;
+        border-right: 1px solid #E2E8F0;
+    }
+    
+    /* Todos los textos a Negro */
+    p, h1, h2, h3, label, li, span, div {
+        color: #000000 !important;
+    }
+    
+    /* Tarjetas de Métricas */
+    .metric-box {
+        background-color: #FFFFFF;
+        border: 1px solid #CBD5E1;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    
+    /* Ajuste de Inputs para que se vean bien en fondo blanco */
+    .stSelectbox div[data-baseweb="select"] > div, .stNumberInput input {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border-color: #94A3B8 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# 3. AUTENTICACIÓN SEGURA
 try:
     if "earth_engine" in st.secrets:
         credentials = st.secrets["earth_engine"]["token"]
@@ -19,27 +67,10 @@ try:
         os.makedirs(path, exist_ok=True)
         with open(os.path.join(path, "credentials"), "w") as f:
             f.write(credentials)
-    
     ee.Initialize(project='egresados-q9tr')
-
 except Exception as e:
-    st.error("⚠️ Error de conexión GEE. Revisa los Secrets.")
+    st.error(f"⚠️ Error GEE: {e}")
     st.stop()
-
-# 3. ESTILOS CSS (Mínimos y Seguros para evitar pantalla blanca)
-st.markdown("""
-<style>
-    .metric-box {
-        background-color: #f0f2f6;
-        border-radius: 10px;
-        padding: 20px;
-        text-align: center;
-        border: 1px solid #e0e0e0;
-    }
-    .big-font { font-size: 30px !important; font-weight: bold; color: #1f2937; }
-    .label-font { font-size: 14px; color: #6b7280; text-transform: uppercase;}
-</style>
-""", unsafe_allow_html=True)
 
 # 4. FUNCIONES
 @st.cache_data
@@ -47,10 +78,8 @@ def get_chart_data(lat, lon, years):
     roi = ee.Geometry.Point([lon, lat]).buffer(2000)
     end = datetime.now()
     start = end - timedelta(days=365*years)
-    # Usamos MODIS para la serie de tiempo (rápido y ligero)
     ds = ee.ImageCollection('MODIS/006/MOD13Q1').filterDate(start, end).filterBounds(roi).select('NDVI')
     data = ds.map(lambda img: ee.Feature(None, {'d': img.date().format('YYYY-MM-dd'), 'v': img.reduceRegion(ee.Reducer.mean(), roi, 250).get('NDVI')})).getInfo()
-    
     df = pd.DataFrame([f['properties'] for f in data['features']])
     if not df.empty:
         df['d'] = pd.to_datetime(df['d'])
@@ -59,55 +88,53 @@ def get_chart_data(lat, lon, years):
         return df.sort_values('d')
     return pd.DataFrame()
 
-# 5. INTERFAZ DE USUARIO
+# 5. INTERFAZ
 st.title("🧬 PACOMARCA: Monitor Científico")
 
-# --- Barra Lateral ---
+# Sidebar
 with st.sidebar:
     st.header("Parámetros")
     c_lat = st.number_input("Latitud", value=-14.85000, format="%.5f")
     c_lon = st.number_input("Longitud", value=-70.92000, format="%.5f")
     
-    # Selector de capas (Requisito VicuñaPastos)
+    # Capas (Simplificadas para estabilidad)
     layer = st.selectbox(
         "Capa de Análisis", 
-        ["Biomasa (Kg/Ha)", "Clasificación (IA)", "Radar S1 (Nubes)", "NDVI"]
+        ["Biomasa (Kg/Ha)", "Clasificación (Hábitat)", "Radar S1 (Nubes)", "NDVI"]
     )
     years = st.slider("Historial (Años)", 5, 23, 20)
-    st.info("Sistema conectado a Google Earth Engine")
 
-# --- Cuerpo Principal ---
+# Columnas Principales
 col_map, col_stats = st.columns([3, 1])
 
 with col_map:
-    # Configuración del Mapa
     m = geemap.Map(center=[c_lat, c_lon], zoom=14)
     roi = ee.Geometry.Point([c_lon, c_lat]).buffer(2000)
     
-    # LOGICA DE CAPAS (Aquí es donde estaba incompleto el código anterior)
+    # --- LÓGICA DE CAPAS ROBUSTA (SIN ERRORES) ---
     
     # 1. Biomasa (Tu requisito principal)
     if "Biomasa" in layer:
         s2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED").filterBounds(roi).filterDate(datetime.now()-timedelta(days=60), datetime.now()).sort('CLOUDY_PIXEL_PERCENTAGE').first()
         if s2:
             viz = s2.normalizedDifference(['B8', 'B4']).multiply(2800)
-            m.addLayer(viz, {'min':0, 'max':2500, 'palette':['#ffffe5', '#f7fcb9', '#addd8e', '#41ab5d', '#005a32']}, "Biomasa Est.")
+            m.addLayer(viz, {'min':0, 'max':2500, 'palette':['#ffffe5', '#f7fcb9', '#addd8e', '#41ab5d', '#005a32']}, "Biomasa")
     
-    # 2. Radar S1 (Requisito 'CambioAlto' del documento - ve a través de nubes)
+    # 2. Radar S1 (Requisito CambioAlto)
     elif "Radar" in layer:
         s1 = ee.ImageCollection('COPERNICUS/S1_GRD').filterBounds(roi).filterDate(datetime.now()-timedelta(days=30), datetime.now()).first()
         if s1:
             m.addLayer(s1.select('VV'), {'min':-25, 'max':5}, "Radar Sentinel-1")
     
-    # 3. Clasificación (Requisito 'VicuñaPastos' - segmentación simple)
+    # 3. Clasificación (Requisito VicuñaPastos - VERSIÓN ESTABLE)
+    # Reemplazamos K-Means (que fallaba) por Clasificación por Umbrales (No falla)
     elif "Clasificación" in layer:
         s2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED").filterBounds(roi).filterDate(datetime.now()-timedelta(days=60), datetime.now()).sort('CLOUDY_PIXEL_PERCENTAGE').first()
         if s2:
-            # Clustering simple K-Means para simular clasificación de hábitat
-            training = s2.sample(region=roi, scale=10, numPixels=1000)
-            clusterer = ee.Clusterer.wekaKMeans(3).train(training)
-            result = s2.cluster(clusterer)
-            m.addLayer(result, {'min':0, 'max':2, 'palette':['red', 'yellow', 'green']}, "Hábitat IA")
+            ndvi = s2.normalizedDifference(['B8', 'B4'])
+            # Definimos clases: 0=Suelo, 1=Pasto Pobre, 2=Pasto Rico
+            classified = ee.Image(0).where(ndvi.gt(0.2), 1).where(ndvi.gt(0.5), 2).clip(roi)
+            m.addLayer(classified, {'min':0, 'max':2, 'palette':['red', 'yellow', 'green']}, "Hábitat Clasificado")
             
     # 4. NDVI
     else:
@@ -115,50 +142,50 @@ with col_map:
         if s2:
             m.addLayer(s2.normalizedDifference(['B8', 'B4']), {'min':0, 'max':0.8, 'palette':['red', 'yellow', 'green']}, "NDVI")
 
-    m.addLayer(roi, {'color':'white', 'width': 2}, "Zona de Estudio")
+    m.addLayer(roi, {'color':'black', 'width': 2}, "Zona de Estudio")
     m.to_streamlit(height=500)
 
 with col_stats:
-    # Procesamiento de datos históricos
     df = get_chart_data(c_lat, c_lon, years)
     
     if not df.empty:
         val_actual = df['biomasa'].iloc[-1]
         promedio = df['biomasa'].mean()
         
-        # Tarjeta de KPI limpia
+        # Tarjeta KPI Blanca y Negra
         st.markdown(f"""
         <div class="metric-box">
-            <div class="label-font">Promedio Actual</div>
-            <div class="big-font">{val_actual:.0f}</div>
+            <div style="font-size:14px; font-weight:bold; color:#4B5563;">PROMEDIO ACTUAL</div>
+            <div style="font-size:40px; font-weight:900; color:#000000;">{val_actual:.0f}</div>
             <div style="color:#2563EB; font-weight:bold;">Kg/Ha</div>
         </div>
         """, unsafe_allow_html=True)
         
-        st.write("") # Espacio
+        st.write("")
         
-        # Sistema de Alertas (Requisito 'CambioAlto')
+        # Alertas
         if val_actual < 500:
-            st.error("🚨 **CRÍTICO**\n\nDegradación severa detectada.")
+            st.error("🚨 CRÍTICO: Degradación severa.")
         elif val_actual < 1500:
-            st.warning("⚠️ **ALERTA**\n\nNiveles bajo el promedio.")
+            st.warning("⚠️ ALERTA: Bajo el promedio.")
         else:
-            st.success("✅ **ÓPTIMO**\n\nCondición saludable.")
+            st.success("✅ ÓPTIMO: Condición saludable.")
             
-        st.caption(f"Promedio histórico: {promedio:.0f} Kg/Ha")
+        st.caption(f"Promedio histórico (20 años): {promedio:.0f} Kg/Ha")
 
-# Gráfico de Tendencia
+# Gráfico Forzado a Blanco
 if not df.empty:
-    st.subheader("Dinámica Temporal (20 Años)")
+    st.subheader("Dinámica Temporal")
     fig = px.area(df, x='d', y='biomasa')
     fig.update_layout(
         plot_bgcolor='white',
         paper_bgcolor='white',
         margin=dict(l=20,r=20,t=10,b=20),
-        yaxis_title="Biomasa (Kg/Ha)",
-        xaxis_title=""
+        xaxis=dict(showgrid=False, title="", tickfont=dict(color='black')),
+        yaxis=dict(showgrid=True, gridcolor='#f0f0f0', title="Kg/Ha", tickfont=dict(color='black')),
+        font=dict(color='black') # Fuerza texto negro en gráfico
     )
     st.plotly_chart(fig, use_container_width=True)
 
 st.markdown("---")
-st.markdown("<div style='text-align:center; color:grey;'>Desarrollado por Jhon Monroy | Experto en Informática</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center; color:black;'>Desarrollado por Jhon Monroy | Experto en Informática</div>", unsafe_allow_html=True)
