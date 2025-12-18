@@ -11,7 +11,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 
 # ==========================================
-# 1. CONFIGURACIÓN "PACOMARCA SUITE - HIGH CONTRAST"
+# 1. CONFIGURACIÓN INICIAL (SAFE MODE)
 # ==========================================
 st.set_page_config(
     page_title="Pacomarca Scientific Suite", 
@@ -20,140 +20,104 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CSS MAESTRO (FORZADO DE TEXTO NEGRO) ---
+# --- CSS PROFESIONAL (VERSIÓN ESTABLE) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    /* Fuente Inter */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-    /* 1. REGLA DE ORO: TODO EL TEXTO DEBE SER OSCURO */
-    html, body, [class*="css"], h1, h2, h3, h4, h5, h6, p, span, label, div, li, a, button {
+    /* FONDO Y TEXTO BASE */
+    .stApp {
+        background-color: #F8FAFC;
         font-family: 'Inter', sans-serif;
-        color: #0F172A !important; /* AZUL NOCHE PROFUNDO */
-    }
-
-    /* 2. FONDO BLANCO PURO */
-    [data-testid="stAppViewContainer"] {
-        background-color: #F8FAFC !important;
-    }
-    [data-testid="stHeader"] {
-        background-color: transparent !important;
-    }
-
-    /* 3. SIDEBAR (PANEL LATERAL) */
-    section[data-testid="stSidebar"] {
-        background-color: #FFFFFF !important;
-        border-right: 1px solid #CBD5E1;
     }
     
-    /* Headers del Sidebar */
-    .sidebar-label {
-        color: #334155 !important;
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-top: 25px;
-        margin-bottom: 5px;
+    /* FORZAR TEXTO OSCURO EN MARKDOWN Y TÍTULOS (Sin romper la app) */
+    .stMarkdown, .stText, h1, h2, h3, p, li, label {
+        color: #0F172A !important;
     }
 
-    /* 4. INPUTS Y SELECTORES (Corrección visual) */
-    /* El fondo del input blanco y el texto negro */
-    div[data-baseweb="select"] > div, div[data-baseweb="input"] > div, .stNumberInput input {
-        background-color: #FFFFFF !important;
-        border-color: #94A3B8 !important;
-        color: #000000 !important;
-        font-weight: 600;
+    /* SIDEBAR BLANCO */
+    section[data-testid="stSidebar"] {
+        background-color: #FFFFFF;
+        border-right: 1px solid #E2E8F0;
     }
-    /* El texto dentro de los selectores */
-    div[data-baseweb="select"] span {
-        color: #000000 !important;
-    }
-
-    /* 5. TARJETAS (CARDS) */
-    .card {
+    
+    /* TARJETAS (CARDS) */
+    .metric-card {
         background-color: #FFFFFF;
         border: 1px solid #E2E8F0;
         border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        margin-bottom: 20px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        margin-bottom: 15px;
     }
     
-    /* 6. KPIs Y MÉTRICAS */
-    .kpi-value {
-        font-size: 36px;
-        font-weight: 800;
+    /* INPUTS Y SELECTORES (Para que no se vean oscuros) */
+    .stSelectbox div[data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
         color: #0F172A !important;
-        letter-spacing: -1px;
+        border-color: #CBD5E1 !important;
     }
-    .kpi-label {
-        font-size: 12px;
-        font-weight: 700;
-        color: #64748B !important;
-        text-transform: uppercase;
+    .stNumberInput input {
+        color: #0F172A !important;
+        background-color: #FFFFFF !important;
     }
 
-    /* 7. PESTAÑAS (TABS) DE ALTO CONTRASTE */
+    /* TABS LIMPIOS */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
         background-color: transparent;
         border-bottom: 2px solid #E2E8F0;
-        padding-bottom: 0px;
     }
     .stTabs [data-baseweb="tab"] {
         height: 45px;
-        font-size: 15px;
         font-weight: 600;
-        color: #64748B !important; /* Gris oscuro inactivo */
+        color: #64748B;
         border: none;
         background: transparent;
     }
     .stTabs [aria-selected="true"] {
-        color: #2563EB !important; /* Azul activo */
+        color: #2563EB !important;
         border-bottom: 3px solid #2563EB !important;
-        background-color: #FFFFFF !important;
+        background-color: transparent !important;
     }
 
-    /* 8. FOOTER */
+    /* FOOTER */
     .footer {
         text-align: center;
-        padding: 30px;
-        color: #64748B !important;
+        padding: 40px 0;
+        color: #64748B;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
         border-top: 1px solid #E2E8F0;
-        margin-top: 40px;
+        margin-top: 50px;
     }
-    
-    /* Corrección Radio Buttons */
-    div[role="radiogroup"] label p {
-        font-weight: 600 !important;
-    }
-
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CONEXIÓN GEE
+# 2. CONEXIÓN (CON MANEJO DE ERRORES VISIBLE)
 # ==========================================
 PROJECT_ID = 'egresados-q9tr'
+
 try:
     ee.Initialize(project=PROJECT_ID)
-except:
+except Exception as e:
     try:
         ee.Authenticate()
         ee.Initialize(project=PROJECT_ID)
-    except:
-        st.error("⚠️ Error de Conexión a Motores Satelitales")
+    except Exception as inner_e:
+        st.error(f"⚠️ Error de Conexión: {inner_e}")
         st.stop()
 
 # ==========================================
-# 3. FUNCIONES DE PROCESAMIENTO
+# 3. FUNCIONES
 # ==========================================
 @st.cache_data
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,rain,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,rain&timezone=auto"
         return requests.get(url).json()
     except: return None
 
@@ -163,7 +127,6 @@ def get_chart_data(lat, lon, years):
     end = datetime.now()
     start = end - timedelta(days=365*years)
     
-    # MODIS NDVI Diaria
     ds = ee.ImageCollection('MODIS/006/MOD13Q1') \
            .filterDate(start, end) \
            .filterBounds(roi_internal) \
@@ -179,47 +142,46 @@ def get_chart_data(lat, lon, years):
         df['d'] = pd.to_datetime(df['d'])
         df['v'] = df['v']/10000
         df = df.sort_values('d')
-        # Cálculos derivados
-        df['biomasa'] = df['v'] * 2800 # Modelo empírico (Kg/Ha)
+        # Modelo de Biomasa (Kg/Ha)
+        df['biomasa'] = df['v'] * 2800 
         return df
     return pd.DataFrame()
 
 # ==========================================
-# 4. BARRA LATERAL (CONTROLES)
+# 4. SIDEBAR
 # ==========================================
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/3063/3063835.png", width=50)
     st.markdown("### PACOMARCA\n**SCIENTIFIC SUITE**")
     
-    st.markdown('<div class="sidebar-label">📍 COORDENADAS</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    st.caption("📍 PUNTO DE CONTROL")
     c_lat = st.number_input("Latitud", value=-14.85000, format="%.5f")
     c_lon = st.number_input("Longitud", value=-70.92000, format="%.5f")
     roi = ee.Geometry.Point([c_lon, c_lat]).buffer(2000)
 
-    st.markdown('<div class="sidebar-label">🛰️ SENSORES Y MODELOS</div>', unsafe_allow_html=True)
-    
-    # NUEVOS ÍNDICES SEGÚN DOCUMENTO VICUÑAPASTOS
+    st.caption("🛰️ CAPAS Y MODELOS")
     layer_mode = st.radio(
-        "Variable de Estudio:",
+        "Variable de Análisis:",
         ["Biomasa (Kg/Ha)", "Clasificación (IA)", "Radar S1 (Estructura)", "NDVI (Vigor)", "EVI (Alta Densidad)"],
         captions=[
-            "Estimación de Forraje", 
-            "Segmentación de Hábitat", 
+            "Forraje Disponible", 
+            "Tipos de Hábitat", 
             "Penetración de Nubes",
-            "Vigor Vegetal Estándar",
+            "Índice Estándar",
             "Índice Mejorado"
         ],
         index=0
     )
     
-    st.markdown('<div class="sidebar-label">⏳ VENTANA TEMPORAL</div>', unsafe_allow_html=True)
+    st.caption("⏳ SERIE DE TIEMPO")
     years = st.slider("Años de Análisis", 5, 23, 20)
 
 # ==========================================
 # 5. DASHBOARD PRINCIPAL
 # ==========================================
 
-# --- HEADER DE CLIMA (Estilo Tarjeta Blanca) ---
+# --- HEADER ---
 w = get_weather(c_lat, c_lon)
 if w and 'current' in w:
     temp = w['current']['temperature_2m']
@@ -229,76 +191,71 @@ else:
     temp, hum, rain = "--", "--", "--"
 
 st.markdown(f"""
-<div class="card" style="padding: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+<div style="background:white; padding:1.5rem; border-radius:12px; border:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
     <div>
-        <h1 style="margin:0; font-size: 28px; font-weight: 800; color: #0F172A;">Fundo Pacomarca</h1>
-        <p style="margin:0; font-size: 15px; color: #475569; font-weight: 500;">Centro de Investigación y Producción de Camélidos</p>
+        <h1 style="margin:0; font-size:26px; color:#0F172A; font-weight:800;">Fundo Pacomarca</h1>
+        <p style="margin:0; color:#64748B; font-size:14px;">Plataforma de Inteligencia Agronómica</p>
     </div>
-    <div style="display: flex; gap: 40px; text-align: right;">
-        <div>
-            <div class="kpi-value" style="font-size: 26px;">{temp}°</div>
-            <div class="kpi-label">TEMP. AIRE</div>
-        </div>
-        <div>
-            <div class="kpi-value" style="font-size: 26px; color: #2563EB;">{hum}%</div>
-            <div class="kpi-label">H. RELATIVA</div>
-        </div>
-        <div>
-            <div class="kpi-value" style="font-size: 26px; color: #059669;">{rain}</div>
-            <div class="kpi-label">LLUVIA (MM)</div>
-        </div>
+    <div style="display:flex; gap:30px; text-align:right;">
+        <div><span style="font-size:22px; font-weight:700; color:#0F172A;">{temp}°</span><br><span style="font-size:11px; color:#94A3B8; font-weight:600;">AIRE</span></div>
+        <div><span style="font-size:22px; font-weight:700; color:#2563EB;">{hum}%</span><br><span style="font-size:11px; color:#94A3B8; font-weight:600;">HUMEDAD</span></div>
+        <div><span style="font-size:22px; font-weight:700; color:#059669;">{rain}</span><br><span style="font-size:11px; color:#94A3B8; font-weight:600;">LLUVIA</span></div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- GRID VISUAL (MAPA + KPI CIENTÍFICO) ---
+# --- VISOR Y KPI ---
 c1, c2 = st.columns([3, 1])
 
 with c1:
-    # Contenedor del Mapa
     with st.container():
-        st.markdown('<div class="card" style="padding: 0; overflow: hidden; border: 1px solid #E2E8F0;">', unsafe_allow_html=True)
+        st.markdown('<div style="background:white; padding:10px; border-radius:12px; border:1px solid #E2E8F0;">', unsafe_allow_html=True)
         m = geemap.Map(center=[c_lat, c_lon], zoom=14, basemap="HYBRID")
         s2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED").filterBounds(roi).filterDate(datetime.now()-timedelta(days=60), datetime.now()).sort('CLOUDY_PIXEL_PERCENTAGE').first()
         
         val_disp = 0
         unit = ""
-        legend = ""
+        legend_label = ""
         
         if s2:
+            # 1. BIOMASA
             if layer_mode == "Biomasa (Kg/Ha)":
                 ndvi = s2.normalizedDifference(['B8', 'B4'])
-                img = ndvi.multiply(2800).rename('Biomasa') # Factor Pacomarca
+                img = ndvi.multiply(2800).rename('Biomasa')
                 vis = {'min': 0, 'max': 2500, 'palette': ['#ffffe5', '#f7fcb9', '#addd8e', '#41ab5d', '#005a32']}
-                legend = "Disponibilidad de Forraje"
+                legend_label = "Biomasa (Forraje)"
                 unit = "Kg/Ha"
+            # 2. CLASIFICACIÓN
             elif layer_mode == "Clasificación (IA)":
                 input_img = s2.select(['B4', 'B3', 'B2', 'B8'])
                 training = input_img.sample(region=roi, scale=10, numPixels=1000)
                 clusterer = ee.Clusterer.wekaKMeans(3).train(training)
                 img = input_img.cluster(clusterer)
-                vis = {'min': 0, 'max': 2, 'palette': ['#d73027', '#fee08b', '#1a9850']} # Rojo=Suelo, Verde=Pasto
-                legend = "Zonificación de Hábitat"
-                unit = "Clase"
+                vis = {'min': 0, 'max': 2, 'palette': ['#d73027', '#fee08b', '#1a9850']}
+                legend_label = "Clase de Hábitat"
+                unit = "ID"
+            # 3. RADAR
             elif layer_mode == "Radar S1 (Estructura)":
                 s1 = ee.ImageCollection('COPERNICUS/S1_GRD').filterBounds(roi).filterDate(datetime.now()-timedelta(days=30), datetime.now()).first()
                 if s1:
                     img = s1.select('VV')
                     vis = {'min': -25, 'max': 5}
-                    legend = "Retrodispersión (SAR)"
+                    legend_label = "Retrodispersión SAR"
                     unit = "dB"
                 else:
                     img = ee.Image(0)
                     vis = {}
+            # 4. EVI
             elif layer_mode == "EVI":
                 img = s2.expression('2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))', {'NIR': s2.select('B8'), 'RED': s2.select('B4'), 'BLUE': s2.select('B2')})
                 vis = {'min': 0, 'max': 1, 'palette': ['white', 'green']}
-                legend = "Índice EVI"
+                legend_label = "Índice EVI"
                 unit = "idx"
-            else: # NDVI
+            # 5. NDVI
+            else: 
                 img = s2.normalizedDifference(['B8', 'B4'])
                 vis = {'min': 0, 'max': 0.8, 'palette': ['#d73027', '#fdae61', '#d9ef8b', '#1a9850']}
-                legend = "Vigor Vegetal"
+                legend_label = "Vigor NDVI"
                 unit = "idx"
 
             m.addLayer(img.clip(roi), vis, layer_mode)
@@ -310,92 +267,74 @@ with c1:
         st.markdown('</div>', unsafe_allow_html=True)
 
 with c2:
-    # Tarjeta KPI Científica
     st.markdown(f"""
-    <div class="card" style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
-        <div class="kpi-label" style="margin-bottom: 10px;">PROMEDIO ZONAL</div>
-        <div class="kpi-value" style="font-size: 52px; color: #0F172A;">{val_disp:.2f}</div>
-        <div style="font-size: 16px; font-weight: 700; color: #2563EB; margin-bottom: 20px;">{unit}</div>
-        <div style="height: 6px; width: 100%; background: #F1F5F9; border-radius: 3px;">
-            <div style="height: 100%; width: 60%; background: #0F172A; border-radius: 3px;"></div>
+    <div class="metric-card" style="text-align:center; height:100%; display:flex; flex-direction:column; justify-content:center;">
+        <div style="font-size:12px; font-weight:700; color:#64748B; margin-bottom:10px;">PROMEDIO ZONAL</div>
+        <div style="font-size:42px; font-weight:800; color:#0F172A; letter-spacing:-1px;">{val_disp:.2f}</div>
+        <div style="font-size:14px; font-weight:600; color:#2563EB; margin-bottom:20px;">{unit}</div>
+        <div style="height:5px; width:100%; background:#F1F5F9; border-radius:3px;">
+            <div style="height:100%; width:60%; background:#0F172A; border-radius:3px;"></div>
         </div>
-        <p style="margin-top: 20px; font-size: 13px; font-weight: 600; color: #64748B;">
-            {legend} <br> Dato satelital en tiempo real.
+        <p style="margin-top:20px; font-size:13px; color:#475569; line-height:1.4;">
+            {legend_label}<br>Dato satelital en tiempo real.
         </p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Alerta de Cambio (Requisito CambioAlto)
-    if layer_mode == "Biomasa (Kg/Ha)":
-        if val_disp < 500:
-            st.error("🚨 ALERTA CRÍTICA: Baja disponibilidad de forraje.")
-        elif val_disp < 1500:
-            st.warning("⚠️ ALERTA TEMPRANA: Estrés detectado.")
-        else:
-            st.success("✅ ESTABLE: Capacidad de carga adecuada.")
 
-# ANALYTICS
+# --- ANALYTICS ---
 st.write("")
-st.markdown('<div class="card">', unsafe_allow_html=True)
 st.markdown("### 📊 Análisis de Tendencias y Alertas")
-st.markdown("<p style='color:#64748B; font-weight:500;'>Evaluación de dinámica temporal y detección de anomalías.</p>", unsafe_allow_html=True)
+st.markdown("<p style='color:#475569; font-size:14px;'>Evaluación de dinámica temporal y detección de anomalías.</p>", unsafe_allow_html=True)
 
 df = get_chart_data(c_lat, c_lon, years)
 
 if not df.empty:
-    tab1, tab2 = st.tabs(["Dinámica Temporal", "Monitor de Alertas"])
-    
-    # TAB 1: GRÁFICO HISTÓRICO
-    with tab1:
-        variable_plot = 'biomasa' if "Biomasa" in layer_mode else 'v'
-        y_label = "Biomasa (Kg/Ha)" if "Biomasa" in layer_mode else "Valor Índice"
+    with st.container():
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        tab1, tab2 = st.tabs(["Dinámica Temporal", "Monitor de Alertas"])
         
-        # CONFIGURACIÓN GRÁFICA NEGRA PARA EJES Y TEXTO
-        fig = px.area(df, x='d', y=variable_plot, height=350)
-        fig.update_traces(line_color='#2563EB', fillcolor='rgba(37, 99, 235, 0.1)')
-        fig.update_layout(
-            plot_bgcolor='white', 
-            paper_bgcolor='white',
-            margin=dict(l=20,r=20,t=20,b=20),
-            xaxis=dict(
-                showgrid=False, 
-                tickfont=dict(color='black', size=12), # Eje X Negro
-                title=""
-            ),
-            yaxis=dict(
-                showgrid=True, 
-                gridcolor='#f1f5f9', 
-                tickfont=dict(color='black', size=12), # Eje Y Negro
-                title=dict(text=y_label, font=dict(color='black', size=14)) # Título Eje Negro
-            ),
-            font=dict(family="Inter", color="black") # Fuente General Negra
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        with tab1:
+            variable_plot = 'biomasa' if "Biomasa" in layer_mode else 'v'
+            y_label = "Biomasa (Kg/Ha)" if "Biomasa" in layer_mode else "Valor Índice"
+            
+            # Gráfico con configuración de texto negro explícita
+            fig = px.area(df, x='d', y=variable_plot, height=350)
+            fig.update_traces(line_color='#2563EB', fillcolor='rgba(37, 99, 235, 0.1)')
+            fig.update_layout(
+                plot_bgcolor='white', 
+                paper_bgcolor='white',
+                margin=dict(l=20,r=20,t=20,b=20),
+                xaxis=dict(showgrid=False, title="", tickfont=dict(color='#0F172A')),
+                yaxis=dict(showgrid=True, gridcolor='#F1F5F9', title=dict(text=y_label, font=dict(color='#0F172A')), tickfont=dict(color='#0F172A')),
+                font=dict(family="Inter", color="#0F172A")
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
-    # TAB 2: DETECCIÓN DE ALERTAS (NUEVO SERVICIO)
-    with tab2:
-        # Cálculo de Anomalía
-        current_val = df[variable_plot].iloc[-1]
-        hist_mean = df[variable_plot].mean()
-        anomaly = ((current_val - hist_mean) / hist_mean) * 100
-        
-        col_alert, col_metric = st.columns([2, 1])
-        
-        with col_alert:
-            if anomaly < -15:
-                st.error(f"🚨 **ALERTA DETECTADA:** Degradación Significativa (-{abs(anomaly):.1f}%)")
-                st.markdown("**Diagnóstico:** El valor actual está muy por debajo del promedio histórico. Posible sequía o sobrepastoreo.")
-            elif anomaly > 15:
-                st.success(f"🌱 **CONDICIÓN FAVORABLE:** Superávit de Biomasa (+{anomaly:.1f}%)")
-                st.markdown("**Diagnóstico:** Condiciones superiores al promedio histórico.")
-            else:
-                st.info(f"⚖️ **ESTABLE:** Variación Normal ({anomaly:.1f}%)")
-                st.markdown("**Diagnóstico:** Los valores se mantienen dentro del rango esperado.")
-        
-        with col_metric:
-            st.metric("Promedio Histórico", f"{hist_mean:.2f}", f"{anomaly:.1f}% vs Promedio")
+        with tab2:
+            current_val = df[variable_plot].iloc[-1]
+            hist_mean = df[variable_plot].mean()
+            anomaly = ((current_val - hist_mean) / hist_mean) * 100
+            
+            col_a, col_b = st.columns([2, 1])
+            with col_a:
+                if anomaly < -15:
+                    st.error(f"🚨 **ALERTA DETECTADA:** Degradación Significativa (-{abs(anomaly):.1f}%)")
+                    st.markdown("El valor actual está muy por debajo del promedio histórico.")
+                elif anomaly > 15:
+                    st.success(f"🌱 **CONDICIÓN FAVORABLE:** Superávit (+{anomaly:.1f}%)")
+                    st.markdown("Condiciones superiores al promedio histórico.")
+                else:
+                    st.info(f"⚖️ **ESTABLE:** Variación Normal ({anomaly:.1f}%)")
+                    st.markdown("Los valores se mantienen dentro del rango esperado.")
+            
+            with col_b:
+                st.metric("Promedio Histórico", f"{hist_mean:.2f}", f"{anomaly:.1f}% vs Promedio")
 
-st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# FIRMA
-st.markdown('<div class="footer">Jhon Monroy Experto en informatica</div>', unsafe_allow_html=True)
+# --- FIRMA ---
+st.markdown("""
+<div class="footer">
+    Jhon Monroy | Experto en Informática
+</div>
+""", unsafe_allow_html=True)
